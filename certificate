@@ -1,36 +1,58 @@
-(define (certificate workshop-list)
-  (define (has-conflict? workshop1 workshop2)
-    (let ((day1 (cadr workshop1))
-          (start1 (cadddr workshop1))
-          (stop1 (cadddr workshop1))
-          (day2 (cadr workshop2))
-          (start2 (cadddr workshop2))
-          (stop2 (cadddr workshop2)))
-      (and (= day1 day2)
-           (or (and (<= start1 start2) (< start2 stop1))
-               (and (<= start2 start1) (< start1 stop2))))))
-  
-  (let ((credits (let loop ((ws workshop-list) (total 0))
-                    (if (null? ws)
-                        total
-                        (loop (cdr ws) (+ total (caddr (car ws)))))))
-        (workshop-pairs (let ((workshop-list-length (length workshop-list)))
-                          (let loop ((i 1) (j 2) (pairs '()))
-                            (if (>= i workshop-list-length)
-                                pairs
-                                (if (>= j workshop-list-length)
-                                    (loop (+ i 1) (+ i 2) pairs)
-                                    (loop i (+ j 1) (cons (list (list-ref workshop-list (- i 1))
-                                                               (list-ref workshop-list (- j 1)))
-                                                            pairs))))))))
-    (and (>= credits 5)
-         (not (let loop ((pairs workshop-pairs) (conflict? #f))
-                (if conflict?
-                    conflict?
-                    (if (null? pairs)
-                        #f
-                        (loop (cdr pairs)
-                              (let ((pair (car pairs)))
-                                (if (has-conflict? (car pair) (cadr pair))
-                                    #t
-                                    conflict?))))))))))
+(define (certificate lst)
+  (define (sort-by-day lst)
+    (if (<= (length lst) 1)
+        lst
+        (let ((midpoint (quotient (length lst) 2)))
+          (merge (sort-by-day (take lst midpoint))
+                 (sort-by-day (drop lst midpoint))))))
+  (define (merge lst1 lst2)
+    (cond ((null? lst1) lst2)
+          ((null? lst2) lst1)
+          ((< (day (car lst1)) (day (car lst2)))
+           (cons (car lst1) (merge (cdr lst1) lst2)))
+          ((= (day (car lst1)) (day (car lst2)))
+           (if (< (start-time (car lst1)) (start-time (car lst2)))
+               (cons (car lst1) (merge (cdr lst1) lst2))
+               (cons (car lst2) (merge lst1 (cdr lst2)))))
+          (else
+           (cons (car lst2) (merge lst1 (cdr lst2))))))
+  (define (check-overlapping lst)
+    (cond ((null? lst) #t)
+          ((null? (cdr lst)) #t)
+          ((overlap? (car lst) (cadr lst)) #f)
+          (else (check-overlapping (cdr lst)))))
+  (let ((sorted-lst (sort-by-day lst)))
+    (and (>= (credits-sum sorted-lst) 5)
+         (check-overlapping sorted-lst))))
+
+(define (day course)
+  (list-ref course 1))
+
+(define (start-time course)
+  (list-ref course 3))
+
+(define (end-time course)
+  (list-ref course 4))
+
+(define (overlap? course1 course2)
+  (and (= (day course1) (day course2))
+       (or (and (<= (start-time course1) (start-time course2))
+                (>= (end-time course1) (start-time course2)))
+           (and (<= (start-time course2) (start-time course1))
+                (>= (end-time course2) (start-time course1))))))
+
+(define (take lst n)
+  (if (= n 0)
+      '()
+      (cons (car lst) (take (cdr lst) (- n 1)))))
+
+(define (drop lst n)
+  (if (= n 0)
+      lst
+      (drop (cdr lst) (- n 1))))
+
+(define (credits course)
+  (list-ref course 2))
+
+(define (credits-sum lst)
+  (apply + (map credits lst)))
