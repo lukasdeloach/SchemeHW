@@ -1,26 +1,31 @@
 (define (certificate lst)
   (define (sort-by-day lst)
-    (if (<= (length lst) 1)
-        lst
-        (let ((midpoint (quotient (length lst) 2)))
-          (merge (sort-by-day (take lst midpoint))
-                 (sort-by-day (drop lst midpoint))))))
+    (cond ((<= (length lst) 1) lst)
+          (else
+            (let ((midpoint (quotient (length lst) 2)))
+              (merge (sort-by-day (take lst midpoint))
+                     (sort-by-day (drop lst midpoint)))))))
+  
   (define (merge lst1 lst2)
     (cond ((null? lst1) lst2)
           ((null? lst2) lst1)
           ((< (day (car lst1)) (day (car lst2)))
-           (cons (car lst1) (merge (cdr lst1) lst2)))
+            (cons (car lst1) (merge (cdr lst1) lst2)))
           ((= (day (car lst1)) (day (car lst2)))
-           (if (< (start-time (car lst1)) (start-time (car lst2)))
-               (cons (car lst1) (merge (cdr lst1) lst2))
-               (cons (car lst2) (merge lst1 (cdr lst2)))))
+            (cond ((< (start-time (car lst1)) (start-time (car lst2)))
+                    (cons (car lst1) (merge (cdr lst1) lst2)))
+                  (else
+                    (cons (car lst2) (merge lst1 (cdr lst2))))))
           (else
-           (cons (car lst2) (merge lst1 (cdr lst2))))))
+            (cons (car lst2) (merge lst1 (cdr lst2))))))
+
   (define (check-overlapping lst)
     (cond ((null? lst) #t)
           ((null? (cdr lst)) #t)
           ((overlap? (car lst) (cadr lst)) #f)
-          (else (check-overlapping (cdr lst)))))
+          (else
+            (check-overlapping (cdr lst)))))
+
   (let ((sorted-lst (sort-by-day lst)))
     (and (>= (credits-sum sorted-lst) 5)
          (check-overlapping sorted-lst))))
@@ -42,17 +47,16 @@
                 (>= (end-time course2) (start-time course1))))))
 
 (define (take lst n)
-  (if (= n 0)
-      '()
-      (cons (car lst) (take (cdr lst) (- n 1)))))
+  (cond ((= n 0) '())
+        (else (cons (car lst) (take (cdr lst) (- n 1))))))
 
 (define (drop lst n)
-  (if (= n 0)
-      lst
-      (drop (cdr lst) (- n 1))))
+  (cond ((= n 0) lst)
+        (else (drop (cdr lst) (- n 1)))))
 
 (define (credits course)
   (list-ref course 2))
 
 (define (credits-sum lst)
   (apply + (map credits lst)))
+
